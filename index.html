@@ -1,0 +1,542 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Store Locator</title>
+
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: Arial, sans-serif;
+      }
+
+      #store-locator {
+        display: flex;
+        height: 100vh;
+      }
+
+      #storelist {
+        width: 450px;
+        padding: 25px;
+        background-color: #ffffff;
+      }
+
+      /* Add the following styles to your existing CSS file */
+      .search-container {
+        position: relative;
+      }
+
+      #search {
+        width: 100%;
+        padding: 12px 20px;
+        overflow: hidden;
+        border-radius: 50px;
+        border: 1px solid #000;
+        font-size: 14px;
+      }
+
+      .search-icon {
+        position: absolute;
+        top: 50%;
+        right: -22px;
+        transform: translate(-50%, -50%);
+        cursor: pointer;
+        width: 45px;
+        height: 42px;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' version='1.1' xmlns:xlink='http://www.w3.org/1999/xlink' width='512' height='512' x='0' y='0' viewBox='0 0 24 24' style='enable-background:new 0 0 512 512' xml:space='preserve' class=''%3E%3Cg%3E%3Cpath fill='%23000000' d='m17 16.292 3.854 3.854a.5.5 0 0 1-.708.708l-3.854-3.855a8 8 0 1 1 .707-.707zM11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14z' opacity='1' data-original='%23000000' class=''%3E%3C/path%3E%3C/g%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-size: 25px;
+        background-position: center center;
+        border-radius: 0 50px 50px 0;
+      }
+
+      #country-filter {
+        margin: 14px 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 20px;
+      }
+      /* Hide the default checkbox */
+      #country-filter input[type="checkbox"] {
+        display: none;
+      }
+
+      /* Style the custom checkbox */
+      #country-filter input[type="checkbox"] + label {
+        position: relative;
+        padding-left: 30px; /* Adjust the space for the checkbox */
+        cursor: pointer;
+        display: inline-block;
+        line-height: 20px; /* Adjust according to your design */
+      }
+
+      #country-filter input[type="checkbox"] + label:before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 20px; /* Size of the checkbox */
+        height: 20px; /* Size of the checkbox */
+        border: 2px solid #333; /* Border color */
+        background-color: #fff; /* Background color when unchecked */
+      }
+
+      /* Style the custom checkbox when checked */
+      #country-filter input[type="checkbox"]:checked + label:before {
+        background-color: #443230; /* Background color when checked */
+        border-color: #443230; /* Border color when checked */
+      }
+      #store-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        max-height: calc(100% - 67px);
+        overflow-y: auto;
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 10px;
+      }
+      #store-list li {
+        background: #ebe3e0;
+        padding: 15px;
+        cursor: pointer;
+      }
+      #store-list li .store_name {
+        display: block;
+        font-family: var(--font-family-second);
+      }
+      #store-list li .store_details {
+        display: block;
+        font-family: var(--font-family-base);
+      }
+      #map {
+        flex: 1;
+      }
+      *,
+      ::after,
+      ::before {
+        box-sizing: border-box;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wpbingo-section--title">
+      <h2 class="wpbingo-title heading-1">ipsum ut labore et dolore magna aliqua.</h2>
+    </div>
+    <div id="store-locator">
+      <div id="map"></div>
+      <div id="storelist">
+        <div class="search-container">
+          <input type="text" id="search" placeholder="Search for a store" />
+          <div class="search-icon"></div>
+        </div>
+        <div id="country-filter"></div>
+        <ul id="store-list"></ul>
+      </div>
+    </div>
+
+    <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBEqTWsiQqMzme0Mg-K2KJ1aiCtrfgk33k&callback=initMap" async defer></script>
+
+    <script>
+      let map;
+      let markers = [];
+      let stores = [
+        { name: "Ashish 1", address: "123 Main St, City, Country", pincode: "394210", phone: "+91 12345 67890", city: "Surat", country: "India", lat: 37.7749, lng: -12.3194 },
+        { name: "Store 2", address: "456 Oak St, City, Country", pincode: "394210", phone: "+91 12345 67890", city: "Surat", country: "USA", lat: 37.7898, lng: -122.4331 },
+        { name: "India", address: "181, Mansi Residency, Dindoli, Surat", pincode: "394210", phone: "+91 12345 67890", city: "Surat", country: "India", lat: 21.152676, lng: 72.861907 },
+      ];
+
+      function getSelectedCountries() {
+        return Array.from(document.querySelectorAll("#country-filter input:checked")).map((checkbox) => checkbox.id.replace("filter-", ""));
+      }
+
+      function initMap() {
+        map = new google.maps.Map(document.getElementById("map"), {
+          center: { lat: 37.7749, lng: -122.4194 },
+          zoom: 14,
+          mapTypeControl: false,
+          styles: [
+            {
+              featureType: "administrative",
+              elementType: "labels.text.fill",
+              stylers: [
+                {
+                  color: "#444444",
+                },
+              ],
+            },
+            {
+              featureType: "administrative.country",
+              elementType: "all",
+              stylers: [
+                {
+                  visibility: "on",
+                },
+              ],
+            },
+            {
+              featureType: "administrative.country",
+              elementType: "geometry.stroke",
+              stylers: [
+                {
+                  weight: "0.40",
+                },
+              ],
+            },
+            {
+              featureType: "administrative.country",
+              elementType: "labels.text",
+              stylers: [
+                {
+                  visibility: "on",
+                },
+                {
+                  saturation: "-40",
+                },
+              ],
+            },
+            {
+              featureType: "administrative.country",
+              elementType: "labels.text.fill",
+              stylers: [
+                {
+                  color: "#333366",
+                },
+              ],
+            },
+            {
+              featureType: "administrative.country",
+              elementType: "labels.text.stroke",
+              stylers: [
+                {
+                  hue: "#ff0000",
+                },
+                {
+                  visibility: "on",
+                },
+              ],
+            },
+            {
+              featureType: "administrative.province",
+              elementType: "all",
+              stylers: [
+                {
+                  visibility: "on",
+                },
+              ],
+            },
+            {
+              featureType: "administrative.locality",
+              elementType: "all",
+              stylers: [
+                {
+                  visibility: "on",
+                },
+              ],
+            },
+            {
+              featureType: "administrative.neighborhood",
+              elementType: "all",
+              stylers: [
+                {
+                  visibility: "off",
+                },
+              ],
+            },
+            {
+              featureType: "administrative.land_parcel",
+              elementType: "all",
+              stylers: [
+                {
+                  visibility: "off",
+                },
+              ],
+            },
+            {
+              featureType: "landscape",
+              elementType: "all",
+              stylers: [
+                {
+                  color: "#ffffff",
+                },
+              ],
+            },
+            {
+              featureType: "landscape.man_made",
+              elementType: "all",
+              stylers: [
+                {
+                  visibility: "off",
+                },
+              ],
+            },
+            {
+              featureType: "landscape.natural",
+              elementType: "all",
+              stylers: [
+                {
+                  visibility: "on",
+                },
+              ],
+            },
+            {
+              featureType: "poi",
+              elementType: "all",
+              stylers: [
+                {
+                  visibility: "off",
+                },
+              ],
+            },
+            {
+              featureType: "road",
+              elementType: "all",
+              stylers: [
+                {
+                  saturation: -100,
+                },
+                {
+                  lightness: 45,
+                },
+                {
+                  weight: "1.25",
+                },
+                {
+                  visibility: "on",
+                },
+              ],
+            },
+            {
+              featureType: "road.highway",
+              elementType: "all",
+              stylers: [
+                {
+                  visibility: "simplified",
+                },
+              ],
+            },
+            {
+              featureType: "road.arterial",
+              elementType: "labels.icon",
+              stylers: [
+                {
+                  visibility: "off",
+                },
+              ],
+            },
+            {
+              featureType: "transit",
+              elementType: "all",
+              stylers: [
+                {
+                  visibility: "off",
+                },
+              ],
+            },
+            {
+              featureType: "water",
+              elementType: "all",
+              stylers: [
+                {
+                  visibility: "on",
+                },
+                {
+                  color: "#dddcdc",
+                },
+              ],
+            },
+          ],
+        });
+
+        // Load store data via AJAX (simulated with a static JSON file)
+        populateStoreList();
+        populateCountryFilter();
+        createMarkers();
+
+        // Add event listeners after map initialization
+        // Inside the initMap function
+        document.getElementById("search").addEventListener("input", function () {
+          const query = this.value.toLowerCase().trim();
+
+          if (query === "") {
+            // If the search query is empty, show all markers and list items
+            markers.forEach((marker, index) => {
+              marker.setVisible(true);
+            });
+            populateStoreList(); // Pass the selected countries parameter
+          } else {
+            // If there's a search query, filter markers and list items based on the query
+            markers.forEach((marker, index) => {
+              const store = stores[index];
+              const storeName = store.name.toLowerCase();
+              const storeAddress = store.address.toLowerCase();
+              const storeCity = store.city.toLowerCase();
+              const storeCountry = store.country.toLowerCase();
+
+              // Check if any of the fields (name, address, city, country) contains the query
+              if (storeName.includes(query) || storeAddress.includes(query) || storeCity.includes(query) || storeCountry.includes(query)) {
+                marker.setVisible(true);
+              } else {
+                marker.setVisible(false);
+                markers[index].infowindow && markers[index].infowindow.close();
+              }
+            });
+
+            // Update the storelist list with matching items, including selected countries
+            populateStoreList(getSelectedCountries(), query);
+          }
+        });
+      }
+
+      function loadStoresFromJSON(url, callback) {
+        const xhr = new XMLHttpRequest();
+        xhr.onreadystatechange = function () {
+          if (xhr.readyState === 4 && xhr.status === 200) {
+            stores = JSON.parse(xhr.responseText);
+            callback();
+          }
+        };
+        xhr.open("GET", url, true);
+        xhr.send();
+      }
+
+      function populateCountryFilter() {
+        const countryFilter = document.getElementById("country-filter");
+        const countries = [...new Set(stores.map((store) => store.country))];
+
+        countries.forEach((country) => {
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+          checkbox.id = `filter-${country.toLowerCase()}`;
+          checkbox.checked = false;
+          checkbox.addEventListener("change", () => {
+            filterStoreList();
+          });
+
+          const label = document.createElement("label");
+          label.textContent = country;
+
+          // Add the 'for' attribute to the label
+          label.setAttribute("for", `filter-${country.toLowerCase()}`);
+
+          // Append checkbox and label as siblings
+          countryFilter.appendChild(checkbox);
+          countryFilter.appendChild(label);
+
+          // Add a line break for better styling (optional)
+          // countryFilter.appendChild(document.createElement("br"));
+        });
+      }
+
+      function filterStoreList() {
+        const selectedCountries = Array.from(document.querySelectorAll("#country-filter input:checked")).map((checkbox) => checkbox.id.replace("filter-", ""));
+
+        if (selectedCountries.length === 0) {
+          // If no countries are selected, show all markers and stores
+          markers.forEach((marker) => {
+            marker.setVisible(true);
+            marker.infowindow && marker.infowindow.close();
+          });
+          populateStoreList();
+        } else {
+          // If specific countries are selected, filter markers and stores
+          markers.forEach((marker, index) => {
+            const storeCountry = stores[index].country.toLowerCase();
+            if (selectedCountries.includes(storeCountry)) {
+              marker.setVisible(true);
+            } else {
+              marker.setVisible(false);
+              marker.infowindow && marker.infowindow.close();
+            }
+          });
+
+          populateStoreList(selectedCountries);
+        }
+      }
+
+      // Modify the populateStoreList function to accept an additional parameter (searchQuery)
+      function populateStoreList(selectedCountries = [], searchQuery = "") {
+        const storeList = document.getElementById("store-list");
+        storeList.innerHTML = "";
+
+        stores.forEach((store, index) => {
+          const storeName = store.name.toLowerCase();
+          const storeAddress = store.address.toLowerCase();
+          const storeCity = store.city.toLowerCase();
+
+          if ((selectedCountries.length === 0 || selectedCountries.includes(store.country.toLowerCase())) && (searchQuery === "" || storeName.includes(searchQuery) || storeAddress.includes(searchQuery) || storeCity.includes(searchQuery))) {
+            const listItem = document.createElement("li");
+            listItem.innerHTML = `
+              <span class="store_name">${store.name}</span>
+              <span class="store_details">${store.address}, ${store.city}, ${store.country} - ${store.pincode}</span>
+              <span class="store_details">${store.phone}</span>
+            `;
+            listItem.addEventListener("click", () => {
+              showStoreDetails(index);
+            });
+            storeList.appendChild(listItem);
+          }
+        });
+      }
+
+      function createMarkers() {
+        markers.forEach((marker) => {
+          marker.setMap(null);
+        });
+        markers = [];
+
+        stores.forEach((store, index) => {
+          const marker = new google.maps.Marker({
+            position: { lat: store.lat, lng: store.lng },
+            map: map,
+            title: store.name,
+            visible: true,
+          });
+
+          markers.push(marker);
+
+          // Add a click event listener to each marker
+          marker.addListener("click", () => {
+            showStoreDetails(index);
+          });
+        });
+      }
+
+      function showStoreDetails(index, zoomLevel = 14) {
+        const store = stores[index];
+        const marker = markers[index];
+
+        if (marker && store) {
+          const infowindow = new google.maps.InfoWindow({
+            content: `
+        <div>
+          <strong>${store.name}</strong><br>
+          Address: ${store.address}<br>
+          Pincode: ${store.pincode}<br>
+          Phone: ${store.phone}<br>
+          City: ${store.city}<br>
+          Country: ${store.country}
+        </div>
+      `,
+          });
+
+          // Close all infowindows before opening a new one
+          markers.forEach((m) => m.infowindow && m.infowindow.close());
+
+          infowindow.open(map, marker);
+          marker.infowindow = infowindow;
+
+          map.setCenter(marker.getPosition());
+
+          // Check if the current zoom level is lower than the specified zoom level
+          if (map.getZoom() < zoomLevel) {
+            // If so, zoom in to the specified level
+            map.setZoom(zoomLevel);
+          }
+        }
+      }
+    </script>
+  </body>
+</html>
